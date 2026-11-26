@@ -128,6 +128,7 @@ async function captureSheetDataUrl() {
     });
     const canvas = await html2canvas(clone, { scale: 1.5, backgroundColor: '#ffffff', useCORS: true, width: clone.scrollWidth, height: clone.scrollHeight, windowWidth: clone.scrollWidth + 200 });
     const dataUrl = canvas.toDataURL('image/png');
+    window.__shareImgSize = { w: canvas.width, h: canvas.height };
     clone.remove(); clone = null;
     shareCacheDataUrl = dataUrl;
     window.__shareDirty = false;
@@ -142,12 +143,11 @@ async function makePdf() {
   if (typeof window.jspdf === 'undefined') { alert('PDFの準備ができませんでした。通信状態を確認してもう一度押してください。'); return; }
   const dataUrl = await captureSheetDataUrl();
   if (!dataUrl) return;
-  const img = new Image();
-  await new Promise((res) => { img.onload = res; img.src = dataUrl; });
+  const size = window.__shareImgSize || { w: 1870, h: 2550 };
   const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const areaW = 289, areaH = 202;
-  const ratio = Math.min(areaW / img.width, areaH / img.height);
-  const w = img.width * ratio, h = img.height * ratio;
+  const ratio = Math.min(areaW / size.w, areaH / size.h);
+  const w = size.w * ratio, h = size.h * ratio;
   doc.addImage(dataUrl, 'PNG', 4 + (areaW - w) / 2, 4 + (areaH - h) / 2, w, h);
   const blob = doc.output('blob');
   const file = new File([blob], '作業者日報.pdf', { type: 'application/pdf' });
