@@ -129,6 +129,14 @@ function exportCsv() {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+let lastShareFile = null;
+function doShareFile() {
+  if (lastShareFile && navigator.canShare && navigator.canShare({ files: [lastShareFile] })) {
+    navigator.share({ files: [lastShareFile] }).catch(() => {});
+  } else {
+    alert('このブラウザでは共有が使えません。画像を長押しして保存し、LINEやメールに添付してください。');
+  }
+}
 async function shareSheetImage(kind) {
   const node = document.getElementById('report-sheet');
   if (!node || typeof html2canvas === 'undefined') { alert('画像化の準備ができませんでした。通信状態を確認してもう一度押してください。'); return; }
@@ -158,9 +166,14 @@ async function shareSheetImage(kind) {
     clone.remove(); clone = null;
     const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
     const file = new File([blob], '作業者日報.png', { type: 'image/png' });
+    lastShareFile = file;
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file] });
-      return;
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (shareErr) {
+        if (shareErr && shareErr.name === 'AbortError') return;
+      }
     }
     if (kind === 'mail') {
       const f = formState.fields;
@@ -175,7 +188,7 @@ async function shareSheetImage(kind) {
       prev.id = 'share-preview';
       prev.className = 'no-print';
       prev.style.cssText = 'max-width:1200px;margin:12px auto;padding:12px;background:#fff;border-radius:8px;';
-      prev.innerHTML = '<p style="font-weight:700;font-size:13px;margin:0 0 8px;">シートの画像です。画像を長押しすると写真に保存できます。</p>';
+      prev.innerHTML = '<p style="font-weight:700;font-size:13px;margin:0 0 8px;">シートの画像です。下のボタンからLINE・メールで送れます。画像を長押しすると写真にも保存できます。</p><button type="button" onclick="doShareFile()" style="display:block;width:100%;padding:12px;margin:0 0 10px;background:#059669;color:#fff;font-weight:700;font-size:14px;border:none;border-radius:8px;">共有を開く（LINE・メール）</button>';
       const img = document.createElement('img');
       img.id = 'share-preview-img';
       img.style.cssText = 'width:100%;height:auto;border:1px solid #cbd5e1;';
